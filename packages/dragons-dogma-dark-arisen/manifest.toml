@@ -1,0 +1,34 @@
+package_api = 1
+id = "dragons-dogma-dark-arisen"
+name = "DRAGON'S DOGMA: DARK ARISEN"
+version = "0.1.0"
+adapter = "adapter.lua"
+platforms = ["windows"]
+
+[game]
+store = "steam"
+steam_app_id = 367500
+process_name = "DDDA.exe"
+executable_relative_path = "DDDA.exe"
+
+[save]
+repository_scope = "steam_account_remote"
+required_globs = ["DDDA.sav"]
+
+[watch]
+include_globs = ["DDDA.sav", "0", "1", "2", "3", "4", "5", "6", "7"]
+exclude_globs = [".git/**"]
+
+[git]
+exclude_globs = ["*.tmp", "*.lock"]
+autocrlf = false
+
+[commit]
+strategy = "hybrid"
+quiet_seconds = 5
+max_interval_seconds = 300
+commit_on_exit = true
+
+[parse]
+metadata = ["steam_account", "slots", "file_size", "modified_time"]
+slot_count = 1

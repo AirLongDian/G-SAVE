@@ -1,0 +1,19 @@
+package_api = 1
+id = "generic"
+name = "通用游戏支持"
+version = "0.1.0"
+adapter = "adapter.lua"
+generic = true
+
+[game]
+process_name = "game.exe"
+
+[git]
+exclude_globs = ["*.tmp", "*.lock"]
+autocrlf = false
+
+[commit]
+strategy = "hybrid"
+quiet_seconds = 5
+max_interval_seconds = 300
+commit_on_exit = true

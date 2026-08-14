@@ -1,0 +1,34 @@
+package_api = 1
+id = "dragons-dogma-2"
+name = "DRAGON'S DOGMA 2"
+version = "0.1.0"
+adapter = "adapter.lua"
+platforms = ["windows"]
+
+[game]
+store = "steam"
+steam_app_id = 2054970
+process_name = "DD2.exe"
+executable_relative_path = "DD2.exe"
+
+[save]
+repository_scope = "steam_account_win64_save"
+required_globs = ["data000.bin"]
+
+[watch]
+include_globs = ["*.bin"]
+exclude_globs = [".git/**"]
+
+[git]
+exclude_globs = ["*.tmp", "*.lock"]
+autocrlf = false
+
+[commit]
+strategy = "hybrid"
+quiet_seconds = 5
+max_interval_seconds = 300
+commit_on_exit = true
+
+[parse]
+metadata = ["steam_account", "slots", "file_size", "modified_time"]
+slot_count = 2

@@ -1,0 +1,37 @@
+package_api = 1
+id = "elden-ring"
+name = "ELDEN RING"
+version = "0.1.0"
+adapter = "adapter.lua"
+platforms = ["windows"]
+
+[game]
+store = "steam"
+steam_app_id = 1245620
+process_name = "eldenring.exe"
+executable_relative_path = "Game/eldenring.exe"
+
+[save]
+known_folder = "roaming_app_data"
+relative_path = "EldenRing"
+repository_scope = "save_root"
+required_globs = ["*/ER0000.sl2", "*/ER0000.co2"]
+
+[watch]
+include_globs = ["*/ER0000.sl2", "*/ER0000.co2"]
+exclude_globs = [".git/**", "GraphicsConfig.xml", "**/*.bak"]
+
+[git]
+exclude_globs = ["GraphicsConfig.xml", "**/*.bak", "*.tmp"]
+autocrlf = false
+
+[commit]
+strategy = "hybrid"
+quiet_seconds = 5
+max_interval_seconds = 300
+commit_on_exit = true
+
+[parse]
+format = "bnd4-er"
+metadata = ["account_id", "save_kind", "slots", "character_name", "level", "played_seconds"]
+slot_count = 10
