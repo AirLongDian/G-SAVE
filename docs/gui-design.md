@@ -13,8 +13,11 @@
    one whole commit timeline as main while retaining the other as a side branch.
 4. Start, gracefully stop and restart Core; configure elevated logon startup.
 5. Configure commit and push policies by game.
-6. Run a package's sandboxed `install(context)` on demand, then copy the
-   confirmed package into the configuration directory before registration.
+6. Run a dedicated package's sandboxed `install(context)` on demand and show
+   its automatically detected executable and save roots for confirmation.
+   Dedicated packages never open manual path pickers; only generic support does.
+7. Copy the confirmed package into the configuration directory before
+   registration.
 
 ## Navigation
 
