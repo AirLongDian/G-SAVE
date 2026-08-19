@@ -1,0 +1,149 @@
+<!DOCTYPE html><html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Git Graph 查看器</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #gitgraph {
+      width: 100%;
+      min-height: 100%;
+      padding: 16px 8px;
+    }
+    #gitgraph svg { display: block; }
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="gitgraph"></div>
+
+  <!-- Served from the app itself: G-SAVE is a desktop tool and must render the
+       timeline with no network access. -->
+  <script src="./gitgraph.umd.min.js"></script>
+  <script>
+    var container = document.getElementById('gitgraph');
+
+    if (!window.GitgraphJS) {
+      container.innerHTML =
+        '<div class="empty">无法加载时间线绘制库 gitgraph.umd.min.js</div>';
+    }
+
+    var graph = null;
+    var commitsData = [];
+    var selectedHash = null;
+
+    function isSelected(c) { return c.hash === selectedHash; }
+
+    // 库原生 onClick:点击节点圆点触发
+    function handleCommitClick(commit) {
+      if (commit && commit.hash) {
+        selectedHash = commit.hash;
+        // 回传选中事件给父窗口
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'commit-selected', hash: commit.hash }, '*');
+        }
+        renderGraph(commitsData);
+      }
+    }
+
+    // 库原生 onMessageClick:点击节点右侧文字触发
+    function handleMessageClick(commit) {
+      handleCommitClick(commit);
+    }
+
+    function dotStyle(c) {
+      return isSelected(c)
+        ? { color: '#f59e0b', size: 11, strokeColor: '#b45309', strokeWidth: 3 }
+        : { size: 8 };
+    }
+
+    function messageStyle(c) {
+      return isSelected(c)
+        ? { color: '#b45309', font: 'bold 14px system-ui, sans-serif' }
+        : { color: '#334155' };
+    }
+
+    function renderGraph(commits) {
+      commitsData = commits || [];
+      container.innerHTML = '';
+      if (commitsData.length === 0) {
+        container.innerHTML = '<div class="empty">暂无提交记录</div>';
+        return;
+      }
+
+      var G = window.GitgraphJS;
+      graph = G.createGitgraph(container, {
+        template: G.templateExtend(G.TemplateName.Metro, {
+          colors: ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#dc2626', '#0891b2'],
+          branch: { lineWidth: 4, spacing: 48 },
+          commit: {
+            spacing: 64,
+            dot: { size: 8 },
+            message: { font: 'normal 14px system-ui, sans-serif', displayAuthor: false, displayHash: true },
+          },
+        }),
+      });
+
+      // 按时间正序重建分支结构
+      var branches = {};
+      var ordered = commitsData.slice().sort(function (a, b) {
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      });
+
+      ordered.forEach(function (c) {
+        var name = c.branch;
+        if (!branches[name]) {
+          branches[name] = graph.branch(name);
+        }
+        branches[name].commit({
+          subject: c.message,
+          hash: c.hash,
+          author: c.author + ' <user@local>',
+          onClick: handleCommitClick,
+          onMessageClick: handleMessageClick,
+          style: {
+            dot: dotStyle(c),
+            message: messageStyle(c),
+          },
+        });
+      });
+
+      // 渲染完成后给节点加手型光标,提示可点击
+      requestAnimationFrame(function () {
+        var circles = container.querySelectorAll('circle');
+        circles.forEach(function (circle) { circle.style.cursor = 'pointer'; });
+        var texts = container.querySelectorAll('text');
+        texts.forEach(function (text) { text.style.cursor = 'pointer'; });
+      });
+    }
+
+    // 接收父窗口消息
+    window.addEventListener('message', function (event) {
+      if (!event.data) return;
+      if (event.data.type === 'render-commits') {
+        renderGraph(event.data.commits);
+      }
+      if (event.data.type === 'select-commit') {
+        selectedHash = event.data.hash;
+        renderGraph(commitsData);
+      }
+    });
+
+    // 通知父窗口已就绪
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'gitgraph-ready' }, '*');
+    }
+  </script>
+</body>
+</html>

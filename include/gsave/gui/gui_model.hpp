@@ -4,6 +4,7 @@
 #include "gsave/config/config.hpp"
 #include "gsave/repository/repository_engine.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -21,6 +22,9 @@ struct PackageManifest final {
     std::vector<std::string> watch_include_patterns;
     std::vector<std::string> watch_exclude_patterns;
     core::CommitPolicy commit;
+    // Only used to build a Steam poster URL for the library card. Zero means the
+    // card falls back to a gradient tile with the game name.
+    std::int64_t steam_app_id{};
     bool generic{};
 };
 
@@ -66,6 +70,9 @@ public:
     [[nodiscard]] Status set_enabled(std::size_t game_index, bool enabled);
     [[nodiscard]] Status remove_game(std::size_t game_index);
     [[nodiscard]] Status update_all_sync_policies(const config::SyncPolicy& sync);
+    // Writes a whole configuration atomically. Used to flush staged settings in
+    // one pass so Core is restarted once instead of per changed field.
+    [[nodiscard]] Status replace_configuration(config::Config next);
 
 private:
     [[nodiscard]] Status persist(config::Config next);

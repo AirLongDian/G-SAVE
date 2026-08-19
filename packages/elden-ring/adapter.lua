@@ -217,7 +217,7 @@ function install(context)
     if process_path == nil then
         problems[#problems + 1] = problem(
             "game_executable_not_found",
-            "未在 Steam 库中找到 ELDEN RING，可在 GUI 中手动选择 eldenring.exe")
+            "未在 Steam 库中找到 ELDEN RING，请确认游戏已通过 Steam 安装")
     end
 
     local roaming = context.known_folder("roaming_app_data")

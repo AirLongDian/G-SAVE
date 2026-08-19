@@ -96,6 +96,23 @@ struct TimelineResolution final {
     std::string preserved_branch;
 };
 
+struct BranchInfo final {
+    std::string name;
+    std::string tip_commit;
+    std::int64_t tip_committed_at{};
+    bool current{};
+};
+
+// A save timeline is always opened as a named branch. Checking out a bare
+// commit would leave the repository on a detached HEAD, where push, integrate
+// and divergence resolution all refuse to run, so branch creation and checkout
+// are one atomic operation.
+struct BranchFromCommitOptions final {
+    std::filesystem::path repository;
+    std::string commit_id;
+    std::string branch;
+};
+
 [[nodiscard]] Result<CommitOutcome> initialize_repository(const InitOptions& options);
 [[nodiscard]] Result<CommitOutcome> commit_repository(const CommitOptions& options);
 [[nodiscard]] Status push_repository(const PushOptions& options);
@@ -118,5 +135,15 @@ struct TimelineResolution final {
 [[nodiscard]] Result<TimelineResolution> resolve_divergence(
     const IntegrateOptions& options,
     TimelineChoice choice);
+[[nodiscard]] Result<std::vector<BranchInfo>> list_branches(
+    const std::filesystem::path& repository);
+[[nodiscard]] Status create_branch_from_commit(
+    const BranchFromCommitOptions& options);
+[[nodiscard]] Status switch_branch(
+    const std::filesystem::path& repository,
+    std::string_view branch);
+[[nodiscard]] Result<std::string> suggest_branch_name(
+    const std::filesystem::path& repository,
+    std::string_view commit_id);
 
 }  // namespace gsave::repository

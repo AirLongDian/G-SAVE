@@ -128,6 +128,33 @@ struct QStringWiper final {
     return box.clickedButton() == proceed;
 }
 
+// A dedicated package that cannot find the game must say why and stop. Falling
+// back to manual pickers here would let a player point G-SAVE at the wrong
+// directory and quietly version files the adapter cannot parse.
+[[nodiscard]] QString detection_failure_text(
+    const PackageManifest& package,
+    const PackageInstallDetection& detected) {
+    QString message = QStringLiteral("「%1」支持包没有找到完整的游戏和存档位置。")
+        .arg(text(package.name));
+    if (!detected.problems.empty()) {
+        message += QStringLiteral("\n\n支持包报告：");
+        for (const auto& problem : detected.problems) {
+            message += QStringLiteral("\n· %1").arg(text(problem));
+        }
+    } else {
+        if (detected.process_path.empty()) {
+            message += QStringLiteral("\n\n· 未找到游戏可执行文件 %1。")
+                .arg(text(package.process_name));
+        }
+        if (detected.repositories.empty()) {
+            message += QStringLiteral("\n\n· 未找到有效的存档目录。");
+        }
+    }
+    message += QStringLiteral(
+        "\n\n请确认游戏已安装，并且至少运行过一次生成了存档，然后重新点击这张卡片。");
+    return message;
+}
+
 }  // namespace
 
 GuiController::GuiController(
@@ -191,6 +218,100 @@ QVariantList GuiController::packages() const {
     return result;
 }
 
+QVariantList GuiController::library() const {
+    // One card list for the whole library page. Installed games come first, then
+    // packages that are present but not configured, then online-only entries.
+    // A card without a Steam application ID simply has no poster.
+    QVariantList result;
+    const auto& games = model_.configuration().games;
+    const auto& packages = model_.packages();
+
+    QStringList configured_ids;
+    for (std::size_t index = 0; index < games.size(); ++index) {
+        const auto& game = games[index];
+        const auto* package = packageForGame(index);
+        const std::int64_t app_id = package == nullptr ? 0 : package->steam_app_id;
+        configured_ids.push_back(text(game.id));
+
+        QString update_version;
+        if (package != nullptr) {
+            const auto indexed = std::ranges::find_if(
+                index_.packages, [&](const auto& entry) {
+                    return entry.id == text(package->id);
+                });
+            if (indexed != index_.packages.end()
+                && indexed->version != text(package->version)) {
+                update_version = indexed->version;
+            }
+        }
+
+        QVariantMap item;
+        item.insert(QStringLiteral("kind"), QStringLiteral("installed"));
+        item.insert(QStringLiteral("gameIndex"), static_cast<int>(index));
+        item.insert(QStringLiteral("id"), text(game.id));
+        item.insert(QStringLiteral("name"), gameName(index));
+        item.insert(QStringLiteral("enabled"), game.enabled);
+        item.insert(QStringLiteral("saveCount"), static_cast<int>(game.saves.size()));
+        item.insert(QStringLiteral("savePath"), game.saves.empty()
+            ? QString{} : path_text(game.saves.front().path));
+        item.insert(QStringLiteral("process"), text(game.process_name));
+        item.insert(QStringLiteral("version"),
+            package == nullptr ? QString{} : text(package->version));
+        item.insert(QStringLiteral("updateVersion"), update_version);
+        item.insert(QStringLiteral("packageIndex"), package == nullptr
+            ? -1
+            : static_cast<int>(std::distance(packages.begin(),
+                std::ranges::find_if(packages, [&](const auto& value) {
+                    return value.id == package->id;
+                }))));
+        item.insert(QStringLiteral("poster"), steam_poster_url(app_id).toString());
+        item.insert(QStringLiteral("banner"), steam_header_url(app_id).toString());
+        result.push_back(item);
+    }
+
+    QStringList local_ids;
+    for (std::size_t index = 0; index < packages.size(); ++index) {
+        const auto& package = packages[index];
+        if (package.generic) continue;
+        const auto id = text(package.id);
+        local_ids.push_back(id);
+        if (configured_ids.contains(id)) continue;
+        QVariantMap item;
+        item.insert(QStringLiteral("kind"), QStringLiteral("available"));
+        item.insert(QStringLiteral("source"), QStringLiteral("local"));
+        item.insert(QStringLiteral("packageIndex"), static_cast<int>(index));
+        item.insert(QStringLiteral("id"), id);
+        item.insert(QStringLiteral("name"), text(package.name));
+        item.insert(QStringLiteral("version"), text(package.version));
+        item.insert(QStringLiteral("process"), text(package.process_name));
+        item.insert(QStringLiteral("summary"), QString{});
+        item.insert(QStringLiteral("poster"),
+            steam_poster_url(package.steam_app_id).toString());
+        item.insert(QStringLiteral("banner"),
+            steam_header_url(package.steam_app_id).toString());
+        result.push_back(item);
+    }
+
+    for (const auto& entry : index_.packages) {
+        if (configured_ids.contains(entry.id) || local_ids.contains(entry.id)) continue;
+        QVariantMap item;
+        item.insert(QStringLiteral("kind"), QStringLiteral("available"));
+        item.insert(QStringLiteral("source"), QStringLiteral("online"));
+        item.insert(QStringLiteral("packageIndex"), -1);
+        item.insert(QStringLiteral("id"), entry.id);
+        item.insert(QStringLiteral("name"), entry.name);
+        item.insert(QStringLiteral("version"), entry.version);
+        item.insert(QStringLiteral("process"), entry.process_name);
+        item.insert(QStringLiteral("summary"), entry.summary);
+        item.insert(QStringLiteral("poster"),
+            steam_poster_url(entry.steam_app_id).toString());
+        item.insert(QStringLiteral("banner"),
+            steam_header_url(entry.steam_app_id).toString());
+        result.push_back(item);
+    }
+    return result;
+}
+
 QVariantList GuiController::history() const {
     QVariantList result;
     for (const auto& commit : history_) {
@@ -227,9 +348,39 @@ QVariantList GuiController::history() const {
 bool GuiController::historyDiverged() const noexcept { return history_diverged_; }
 QString GuiController::historyStatus() const { return history_status_; }
 bool GuiController::coreRunning() const noexcept { return core_running_; }
+bool GuiController::coreBusy() const noexcept { return core_busy_; }
 bool GuiController::autostartEnabled() const noexcept { return autostart_enabled_; }
 QString GuiController::corePath() const { return path_text(core_path_); }
 QString GuiController::configPath() const { return path_text(model_.config_path()); }
+QString GuiController::packageRoot() const {
+    return path_text(model_.config_path().parent_path() / L"packages");
+}
+QString GuiController::indexUrl() const { return index_url_.toString(); }
+QString GuiController::indexStatus() const { return index_status_; }
+bool GuiController::indexLoading() const noexcept { return index_loading_; }
+bool GuiController::hasPendingChanges() const noexcept {
+    return !pending_commit_.empty();
+}
+
+void GuiController::setIndexUrl(const QString& url) {
+    const QUrl parsed{url.trimmed()};
+    if (parsed == index_url_) return;
+    if (!parsed.isValid() || parsed.isEmpty()) {
+        report(make_error(std::errc::invalid_argument, "支持包清单地址无效。"));
+        return;
+    }
+    index_url_ = parsed;
+    emit indexChanged();
+}
+
+const PackageManifest* GuiController::packageForGame(
+    const std::size_t game_index) const {
+    const auto& games = model_.configuration().games;
+    if (game_index >= games.size()) return nullptr;
+    const auto found = std::ranges::find_if(model_.packages(),
+        [&](const auto& value) { return value.id == games[game_index].id; });
+    return found == model_.packages().end() ? nullptr : &*found;
+}
 
 QString GuiController::gameName(const std::size_t game_index) const {
     const auto& game = model_.configuration().games[game_index];
@@ -432,6 +583,372 @@ Status GuiController::requireGameStopped(const std::size_t game_index) const {
     return {};
 }
 
+QVariantMap GuiController::gameDetail(const int game_index) const {
+    QVariantMap result;
+    const auto& games = model_.configuration().games;
+    if (game_index < 0
+        || static_cast<std::size_t>(game_index) >= games.size()) return result;
+    const auto index = static_cast<std::size_t>(game_index);
+    const auto& game = games[index];
+    const auto* package = packageForGame(index);
+
+    result.insert(QStringLiteral("index"), game_index);
+    result.insert(QStringLiteral("id"), text(game.id));
+    result.insert(QStringLiteral("name"), gameName(index));
+    result.insert(QStringLiteral("enabled"), game.enabled);
+    result.insert(QStringLiteral("process"), text(game.process_name));
+    result.insert(QStringLiteral("processPath"), path_text(game.process_path));
+    result.insert(QStringLiteral("parser"), path_text(game.parser));
+    result.insert(QStringLiteral("packageName"),
+        package == nullptr ? QStringLiteral("通用支持") : text(package->name));
+    result.insert(QStringLiteral("packageVersion"),
+        package == nullptr ? QString{} : text(package->version));
+    result.insert(QStringLiteral("generic"),
+        package == nullptr ? true : package->generic);
+    result.insert(QStringLiteral("packageIndex"), package == nullptr
+        ? -1
+        : static_cast<int>(std::distance(model_.packages().begin(),
+            std::ranges::find_if(model_.packages(), [&](const auto& value) {
+                return value.id == package->id;
+            }))));
+    const std::int64_t app_id = package == nullptr ? 0 : package->steam_app_id;
+    result.insert(QStringLiteral("banner"), steam_header_url(app_id).toString());
+    result.insert(QStringLiteral("poster"), steam_poster_url(app_id).toString());
+
+    QVariantList saves;
+    for (std::size_t save_index = 0; save_index < game.saves.size(); ++save_index) {
+        const auto& save = game.saves[save_index];
+        QVariantMap item;
+        item.insert(QStringLiteral("index"), static_cast<int>(save_index));
+        item.insert(QStringLiteral("path"), path_text(save.path));
+        QStringList includes;
+        for (const auto& value : save.include_globs) includes.push_back(text(value));
+        QStringList excludes;
+        for (const auto& value : save.exclude_globs) excludes.push_back(text(value));
+        item.insert(QStringLiteral("includeGlobs"), includes);
+        item.insert(QStringLiteral("excludeGlobs"), excludes);
+        saves.push_back(item);
+    }
+    result.insert(QStringLiteral("saves"), saves);
+
+    const auto staged = std::ranges::find_if(pending_commit_,
+        [&](const auto& entry) { return entry.first == index; });
+    const auto& commit = staged == pending_commit_.end()
+        ? game.commit : staged->second;
+    QVariantMap policy;
+    policy.insert(QStringLiteral("strategy"), static_cast<int>(commit.strategy));
+    policy.insert(QStringLiteral("quietSeconds"), commit.quiet_interval
+        ? static_cast<qlonglong>(commit.quiet_interval->count()) : 0);
+    policy.insert(QStringLiteral("maxIntervalSeconds"), commit.max_interval
+        ? static_cast<qlonglong>(commit.max_interval->count()) : 0);
+    policy.insert(QStringLiteral("commitOnExit"), commit.commit_on_exit);
+    policy.insert(QStringLiteral("pending"), staged != pending_commit_.end());
+    result.insert(QStringLiteral("commit"), policy);
+
+    QVariantMap sync;
+    sync.insert(QStringLiteral("trigger"), static_cast<int>(game.sync.trigger));
+    sync.insert(QStringLiteral("interval"), game.sync.interval
+        ? static_cast<qlonglong>(game.sync.interval->count()) : 300);
+    sync.insert(QStringLiteral("remote"), text(game.sync.remote));
+    sync.insert(QStringLiteral("credentialStored"),
+        game.sync.credential_reference.has_value());
+    result.insert(QStringLiteral("sync"), sync);
+    return result;
+}
+
+QVariantMap GuiController::repositoryState(
+    const int game_index, const int save_index) const {
+    QVariantMap result;
+    const auto selected = repositoryRef(game_index, save_index);
+    if (!selected) return result;
+    const auto& game = model_.configuration().games[selected->game];
+    const auto& save = game.saves[selected->save];
+
+    auto info = repository::inspect_repository(save.path, game.sync.remote);
+    if (!info) {
+        result.insert(QStringLiteral("error"), text(info.error().message()));
+        return result;
+    }
+    result.insert(QStringLiteral("branch"), text(info->branch));
+    result.insert(QStringLiteral("dirty"), info->worktree_dirty);
+    result.insert(QStringLiteral("ahead"), static_cast<int>(info->ahead));
+    result.insert(QStringLiteral("behind"), static_cast<int>(info->behind));
+    result.insert(QStringLiteral("remoteUrl"),
+        info->remote_url ? text(*info->remote_url) : QString{});
+
+    auto history = repository::list_history(save.path, 1);
+    if (history && !history->empty()) {
+        result.insert(QStringLiteral("lastCommit"), text(history->front().id));
+        result.insert(QStringLiteral("lastCommitAt"),
+            QDateTime::fromSecsSinceEpoch(history->front().committed_at)
+                .toString(QStringLiteral("yyyy-MM-dd  HH:mm:ss")));
+        result.insert(QStringLiteral("lastReason"),
+            friendly_reason(history->front().summary));
+    }
+    return result;
+}
+
+QVariantList GuiController::branches(
+    const int game_index, const int save_index) const {
+    QVariantList result;
+    const auto selected = repositoryRef(game_index, save_index);
+    if (!selected) return result;
+    const auto& save = model_.configuration()
+        .games[selected->game].saves[selected->save];
+    auto listed = repository::list_branches(save.path);
+    if (!listed) return result;
+    for (const auto& branch : *listed) {
+        QVariantMap item;
+        item.insert(QStringLiteral("name"), text(branch.name));
+        item.insert(QStringLiteral("current"), branch.current);
+        item.insert(QStringLiteral("tip"), text(branch.tip_commit));
+        item.insert(QStringLiteral("shortTip"), text(branch.tip_commit.substr(0, 8)));
+        item.insert(QStringLiteral("time"), branch.tip_committed_at == 0
+            ? QString{}
+            : QDateTime::fromSecsSinceEpoch(branch.tip_committed_at)
+                .toString(QStringLiteral("yyyy-MM-dd  HH:mm")));
+        result.push_back(item);
+    }
+    return result;
+}
+
+QString GuiController::suggestedBranchName(
+    const int game_index, const int save_index, const QString& commit_id) const {
+    const auto selected = repositoryRef(game_index, save_index);
+    if (!selected || commit_id.isEmpty()) return {};
+    const auto& save = model_.configuration()
+        .games[selected->game].saves[selected->save];
+    auto suggested = repository::suggest_branch_name(
+        save.path, commit_id.toStdString());
+    return suggested ? text(*suggested) : QString{};
+}
+
+void GuiController::openCommitAsBranch(
+    const int game_index,
+    const int save_index,
+    const QString& commit_id,
+    const QString& branch) {
+    const auto selected = repositoryRef(game_index, save_index);
+    if (!selected || commit_id.isEmpty()) return;
+    if (auto stopped = requireGameStopped(selected->game); !stopped) {
+        report(stopped.error()); return;
+    }
+    const auto& save = model_.configuration()
+        .games[selected->game].saves[selected->save];
+    auto name = branch.trimmed();
+    if (name.isEmpty()) {
+        name = suggestedBranchName(game_index, save_index, commit_id);
+        if (name.isEmpty()) {
+            report(make_error(
+                std::errc::invalid_argument, "无法为这个版本生成存档线名称。"));
+            return;
+        }
+    }
+    if (!ask(QStringLiteral("从这个版本开一条新存档线？"),
+            QStringLiteral(
+                "G-SAVE 会在版本 %1 建立存档线「%2」并切换过去。\n\n"
+                "当前存档线保持不变，两条存档线都可以继续游玩和上传。\n"
+                "切换后存档文件会变成这个版本的内容。")
+                .arg(commit_id.left(8), name))) return;
+
+    // Core must stay stopped for the whole operation: it would otherwise commit
+    // into the repository while HEAD and the worktree are being moved.
+    const bool keep_stopped = true;
+    auto status = runWithCorePaused([&]() -> Status {
+        return repository::create_branch_from_commit({
+            .repository = save.path,
+            .commit_id = commit_id.toStdString(),
+            .branch = name.toStdString(),
+        });
+    }, &keep_stopped);
+    if (!status) { report(status.error()); return; }
+    report(QStringLiteral("已建立存档线「%1」并切换过去。存档文件现在是这个版本的内容。")
+        .arg(name));
+    refreshHistory(game_index, save_index);
+}
+
+void GuiController::switchToBranch(
+    const int game_index, const int save_index, const QString& branch) {
+    const auto selected = repositoryRef(game_index, save_index);
+    if (!selected || branch.trimmed().isEmpty()) return;
+    if (auto stopped = requireGameStopped(selected->game); !stopped) {
+        report(stopped.error()); return;
+    }
+    const auto& save = model_.configuration()
+        .games[selected->game].saves[selected->save];
+    const auto name = branch.trimmed();
+    if (!ask(QStringLiteral("切换到这条存档线？"),
+            QStringLiteral(
+                "存档文件会整体替换为存档线「%1」的内容。\n\n"
+                "当前存档线的历史不会丢失，随时可以切回来。")
+                .arg(name))) return;
+
+    const bool keep_stopped = true;
+    auto status = runWithCorePaused([&]() -> Status {
+        return repository::switch_branch(save.path, name.toStdString());
+    }, &keep_stopped);
+    if (!status) { report(status.error()); return; }
+    report(QStringLiteral("已切换到存档线「%1」。").arg(name));
+    refreshHistory(game_index, save_index);
+}
+
+void GuiController::stageCommitPolicy(
+    const int game_index, const QVariantMap& policy) {
+    const auto& games = model_.configuration().games;
+    if (game_index < 0
+        || static_cast<std::size_t>(game_index) >= games.size()) return;
+    const auto index = static_cast<std::size_t>(game_index);
+
+    core::CommitPolicy next = games[index].commit;
+    if (policy.contains(QStringLiteral("strategy"))) {
+        const int strategy = policy.value(QStringLiteral("strategy")).toInt();
+        if (strategy < 0 || strategy > static_cast<int>(core::CommitStrategy::hybrid)) {
+            report(make_error(std::errc::invalid_argument, "提交方式无效。"));
+            return;
+        }
+        next.strategy = static_cast<core::CommitStrategy>(strategy);
+    }
+    if (policy.contains(QStringLiteral("quietSeconds"))) {
+        const auto seconds = policy.value(QStringLiteral("quietSeconds")).toLongLong();
+        if (seconds < 1 || seconds > 3600) {
+            report(make_error(std::errc::invalid_argument,
+                "安静时间必须在 1 到 3600 秒之间。"));
+            return;
+        }
+        next.quiet_interval = std::chrono::seconds{seconds};
+    }
+    if (policy.contains(QStringLiteral("maxIntervalSeconds"))) {
+        const auto seconds = policy.value(
+            QStringLiteral("maxIntervalSeconds")).toLongLong();
+        if (seconds < 1 || seconds > 86400) {
+            report(make_error(std::errc::invalid_argument,
+                "最长间隔必须在 1 到 86400 秒之间。"));
+            return;
+        }
+        next.max_interval = std::chrono::seconds{seconds};
+    }
+    if (policy.contains(QStringLiteral("commitOnExit"))) {
+        next.commit_on_exit = policy.value(QStringLiteral("commitOnExit")).toBool();
+    }
+    if (next.max_interval && next.quiet_interval
+        && *next.max_interval < *next.quiet_interval) {
+        report(make_error(std::errc::invalid_argument,
+            "最长间隔不能短于安静时间。"));
+        return;
+    }
+
+    const auto same = [](const core::CommitPolicy& left,
+                         const core::CommitPolicy& right) {
+        return left.strategy == right.strategy
+            && left.quiet_interval == right.quiet_interval
+            && left.max_interval == right.max_interval
+            && left.commit_on_exit == right.commit_on_exit;
+    };
+    const auto staged = std::ranges::find_if(pending_commit_,
+        [&](const auto& entry) { return entry.first == index; });
+    if (same(next, games[index].commit)) {
+        if (staged != pending_commit_.end()) pending_commit_.erase(staged);
+    } else if (staged != pending_commit_.end()) {
+        staged->second = next;
+    } else {
+        pending_commit_.emplace_back(index, next);
+    }
+    emit gamesChanged();
+    emit pendingChanged();
+}
+
+void GuiController::discardPendingChanges() {
+    if (pending_commit_.empty()) return;
+    pending_commit_.clear();
+    emit gamesChanged();
+    emit pendingChanged();
+}
+
+bool GuiController::savePendingChanges() {
+    if (pending_commit_.empty()) return true;
+    // Core reads the configuration once at startup, so persisting settings and
+    // restarting the service is a single operation from the player's point of
+    // view. A service that was not running stays stopped.
+    auto status = runWithCorePaused([&]() -> Status {
+        auto next = model_.configuration();
+        for (const auto& [index, policy] : pending_commit_) {
+            if (index >= next.games.size()) {
+                return std::unexpected(make_error(
+                    std::errc::state_not_recoverable,
+                    "configuration changed while settings were pending"));
+            }
+            next.games[index].commit = policy;
+        }
+        return model_.replace_configuration(std::move(next));
+    });
+    if (!status) { report(status.error()); return false; }
+    const auto count = pending_commit_.size();
+    pending_commit_.clear();
+    refreshModels();
+    emit pendingChanged();
+    report(QStringLiteral("已保存 %1 个游戏的设置%2")
+        .arg(count)
+        .arg(core_running_
+            ? QStringLiteral("，存档保护已重启并加载新设置。")
+            : QStringLiteral("，将在下次启动存档保护时生效。")));
+    return true;
+}
+
+void GuiController::refreshIndex() {
+    index_loading_ = true;
+    index_status_ = QStringLiteral("正在获取在线支持包清单…");
+    emit indexChanged();
+
+    auto fetched = fetch_package_index(index_url_);
+    index_loading_ = false;
+    if (!fetched) {
+        // Not reaching the index is normal: installed cards must still show.
+        index_.packages.clear();
+        index_status_ = QStringLiteral("无法获取在线清单：%1")
+            .arg(text(fetched.error().message()));
+        emit indexChanged();
+        emit packagesChanged();
+        return;
+    }
+    index_ = std::move(*fetched);
+    index_status_ = index_.packages.empty()
+        ? QStringLiteral("在线清单没有可用的支持包。")
+        : QStringLiteral("在线清单已更新，共 %1 个支持包%2")
+            .arg(index_.packages.size())
+            .arg(index_.updated_at.isEmpty()
+                ? QStringLiteral("。")
+                : QStringLiteral("，更新于 %1。").arg(index_.updated_at));
+    emit indexChanged();
+    emit packagesChanged();
+}
+
+void GuiController::installFromIndex(const QString& package_id) {
+    const auto entry = std::ranges::find_if(index_.packages,
+        [&](const auto& value) { return value.id == package_id; });
+    if (entry == index_.packages.end()) {
+        report(make_error(std::errc::no_such_file_or_directory,
+            "在线清单里没有这个支持包，请先刷新清单。"));
+        return;
+    }
+    QTemporaryDir temporary{
+        QDir::tempPath() + QStringLiteral("/G-SAVE-download-XXXXXX")};
+    if (!temporary.isValid()) {
+        report(make_error(std::errc::io_error, "无法创建下载临时目录。"));
+        return;
+    }
+    // The archive is verified against the declared size and SHA-256 before it is
+    // allowed anywhere near the importer.
+    auto archive = download_indexed_package(
+        *entry, path_from(temporary.path()));
+    if (!archive) { report(archive.error()); return; }
+    importPackageFile(QString::fromStdWString(archive->wstring()));
+
+    const auto imported = std::ranges::find_if(model_.packages(),
+        [&](const auto& value) { return text(value.id) == package_id; });
+    if (imported == model_.packages().end()) return;
+    installManifest(*imported);
+}
+
 void GuiController::installPackage(const int package_index) {
     if (package_index < 0
         || static_cast<std::size_t>(package_index) >= model_.packages().size()) return;
@@ -482,30 +999,10 @@ void GuiController::installGenericPackage() {
 void GuiController::installManifest(PackageManifest package) {
     std::filesystem::path process;
     std::vector<InstallRepository> repositories;
-    if (!package.generic) {
-        auto detected = detect_package_install(package);
-        if (!detected) { report(detected.error()); return; }
-        if (!detected->process_path.empty() && !detected->repositories.empty()) {
-            QString body = QStringLiteral("已找到游戏和存档：\n\n游戏：%1\n\n存档：")
-                .arg(path_text(detected->process_path));
-            for (const auto& repository : detected->repositories) {
-                body += QStringLiteral("\n%1").arg(path_text(repository.path));
-            }
-            body += QStringLiteral("\n\n使用这些位置吗？选择“手动选择”可以自己指定。");
-            QMessageBox box{QMessageBox::Question, QStringLiteral("检测到游戏"), body};
-            auto* use = box.addButton(QStringLiteral("使用检测结果"), QMessageBox::AcceptRole);
-            auto* manual = box.addButton(QStringLiteral("手动选择"), QMessageBox::ActionRole);
-            box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
-            box.exec();
-            if (box.clickedButton() == use) {
-                process = std::move(detected->process_path);
-                repositories = std::move(detected->repositories);
-            } else if (box.clickedButton() != manual) {
-                return;
-            }
-        }
-    }
-    if (process.empty()) {
+    if (package.generic) {
+        // Only the built-in generic support asks the player for paths. A
+        // dedicated package must locate everything itself, otherwise a wrong
+        // manual pick would silently version the wrong directory.
         const auto executable = QFileDialog::getOpenFileName(
             nullptr, QStringLiteral("选择游戏程序"), {},
             QStringLiteral("Windows 程序 (*.exe)"));
@@ -519,6 +1016,17 @@ void GuiController::installManifest(PackageManifest package) {
             .include_globs = package.watch_include_patterns,
             .exclude_globs = package.watch_exclude_patterns,
         });
+    } else {
+        auto detected = detect_package_install(package);
+        if (!detected) { report(detected.error()); return; }
+        if (detected->process_path.empty() || detected->repositories.empty()) {
+            report(make_error(
+                std::errc::no_such_file_or_directory,
+                detection_failure_text(package, *detected).toStdString()));
+            return;
+        }
+        process = std::move(detected->process_path);
+        repositories = std::move(detected->repositories);
     }
     auto running = inspect_process(process);
     if (!running) { report(running.error()); return; }
@@ -531,9 +1039,18 @@ void GuiController::installManifest(PackageManifest package) {
     for (const auto& repository : repositories) {
         paths += QStringLiteral("\n%1").arg(path_text(repository.path));
     }
-    if (!ask(QStringLiteral("开始保护这个存档？"),
-            QStringLiteral("G-SAVE 会在以下文件夹建立本地版本历史：%1\n\n"
-                           "不会复制、删除或移动现有存档。").arg(paths))) return;
+    // One confirmation for both flows: a dedicated package shows what it found,
+    // generic support shows what the player picked.
+    const auto detail = package.generic
+        ? QStringLiteral("G-SAVE 会在以下文件夹建立本地版本历史：%1\n\n"
+                         "不会复制、删除或移动现有存档。").arg(paths)
+        : QStringLiteral("已自动找到游戏和存档。\n\n游戏：%1\n\n存档：%2\n\n"
+                         "G-SAVE 会在这些文件夹建立本地版本历史，"
+                         "不会复制、删除或移动现有存档。")
+            .arg(path_text(process), paths);
+    if (!ask(package.generic
+            ? QStringLiteral("开始保护这个存档？")
+            : QStringLiteral("开始保护这个游戏？"), detail)) return;
     auto status = runWithCorePaused([&] {
         return model_.install(InstallRequest{
             .package = std::move(package),
@@ -898,27 +1415,44 @@ void GuiController::refreshService() {
 }
 
 void GuiController::startCore() {
+    core_busy_ = true;
+    emit serviceChanged();
     auto status = start_core_elevated(core_path_, model_.config_path());
     if (status) status = waitForCoreStarted();
+    core_busy_ = false;
     if (!status) report(status.error());
     else report(QStringLiteral("G-SAVE 服务已启动。"));
     refreshService();
 }
 
 void GuiController::stopCore() {
+    core_busy_ = true;
+    emit serviceChanged();
     auto status = stop_core(core_path_);
+    core_busy_ = false;
     if (!status) report(status.error());
     else report(QStringLiteral("G-SAVE 服务已停止。"));
     refreshService();
 }
 
 void GuiController::restartCore() {
+    core_busy_ = true;
+    emit serviceChanged();
     auto status = stop_core(core_path_);
     if (status) status = start_core_elevated(core_path_, model_.config_path());
     if (status) status = waitForCoreStarted();
+    core_busy_ = false;
     if (!status) report(status.error());
     else report(QStringLiteral("G-SAVE 服务已重新启动。"));
     refreshService();
+}
+
+void GuiController::toggleCore() {
+    // Drives the title bar indicator. The busy flag lets the view disable the
+    // control so an impatient double click cannot start and stop at once.
+    if (core_busy_) return;
+    if (core_running_) stopCore();
+    else startCore();
 }
 
 void GuiController::setAutostart(const bool enabled) {

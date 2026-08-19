@@ -2,7 +2,7 @@
 
 用于 [G-SAVE](https://github.com/AirLongDian/G-SAVE) 的 ELDEN RING 支持包。
 
-手动配置时选择：
+自动检测的位置：
 
 - EXE：`<Steam库>\steamapps\common\ELDEN RING\Game\eldenring.exe`
 - 存档文件夹：`%APPDATA%\EldenRing`

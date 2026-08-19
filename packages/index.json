@@ -1,0 +1,54 @@
+{
+  "index_version": 1,
+  "updated_at": "2026-08-18",
+  "packages": [
+    {
+      "id": "dark-souls-iii",
+      "name": "DARK SOULS III",
+      "version": "0.1.0",
+      "package_api": 1,
+      "steam_appid": 374320,
+      "process_name": "DarkSoulsIII.exe",
+      "summary": "多账号、10 个角色槽位、角色名",
+      "download": "https://github.com/AirLongDian/G-SAVE-Package-Dark-Souls-III/releases/download/v0.1.0/dark-souls-iii.zip",
+      "sha256": "b16c393852bf51893b557368c05115375678b1f06dbb683eaa8e23164b81b91c",
+      "size": 4885
+    },
+    {
+      "id": "elden-ring",
+      "name": "ELDEN RING",
+      "version": "0.1.0",
+      "package_api": 1,
+      "steam_appid": 1245620,
+      "process_name": "eldenring.exe",
+      "summary": "原版/无缝联机、10 个槽位、角色名、等级、游玩时间",
+      "download": "https://github.com/AirLongDian/G-SAVE-Package-Elden-Ring/releases/download/v0.1.0/elden-ring.zip",
+      "sha256": "17be9dde24361832fb4813ad389cb01d044a7b0e219f52b8a71acc45c8a07838",
+      "size": 4563
+    },
+    {
+      "id": "dragons-dogma-dark-arisen",
+      "name": "DRAGON'S DOGMA: DARK ARISEN",
+      "version": "0.1.0",
+      "package_api": 1,
+      "steam_appid": 367500,
+      "process_name": "DDDA.exe",
+      "summary": "当前进度和文件信息",
+      "download": "https://github.com/AirLongDian/G-SAVE-Package-Dragons-Dogma-Dark-Arisen/releases/download/v0.1.0/dragons-dogma-dark-arisen.zip",
+      "sha256": "cc83e978ccd409343e7d13fe6a4f619d49dd6339ee749f98972654cfd0e462bd",
+      "size": 2811
+    },
+    {
+      "id": "dragons-dogma-2",
+      "name": "DRAGON'S DOGMA 2",
+      "version": "0.1.0",
+      "package_api": 1,
+      "steam_appid": 2054970,
+      "process_name": "DD2.exe",
+      "summary": "最近存档、旅店存档",
+      "download": "https://github.com/AirLongDian/G-SAVE-Package-Dragons-Dogma-2/releases/download/v0.1.0/dragons-dogma-2.zip",
+      "sha256": "08d3a670d0aa0c299663adef03a41083d000c2c1a76b1bbe8cc9ea47e617f370",
+      "size": 2816
+    }
+  ]
+}

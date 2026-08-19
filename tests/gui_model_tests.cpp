@@ -11,6 +11,8 @@
 #include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <utility>
+#include <vector>
 
 namespace gsave::gui {
 namespace {
@@ -94,6 +96,33 @@ TEST(GuiModel, DiscoversPackagesAndGenericInstallPersistsWithoutDeletingHistory)
     EXPECT_TRUE(model.configuration().games.empty());
     EXPECT_TRUE(std::filesystem::is_directory(layout.save / L".git"));
     EXPECT_TRUE(std::filesystem::is_directory(layout.save2 / L".git"));
+}
+
+TEST(GuiModel, LoadsSteamAppIdForLibraryPostersAndDefaultsToZero) {
+    const auto package_root = std::filesystem::path{GSAVE_SOURCE_DIR} / "packages";
+    auto packages = scan_packages(package_root);
+    ASSERT_TRUE(packages) << packages.error().message();
+
+    // Verified against the Steam appdetails API and the poster CDN. A wrong ID
+    // silently shows another game's art, so these stay pinned in a test.
+    const std::vector<std::pair<std::string, std::int64_t>> expected{
+        {"dark-souls-iii", 374320},
+        {"dragons-dogma-dark-arisen", 367500},
+        {"dragons-dogma-2", 2054970},
+        {"elden-ring", 1245620},
+    };
+    for (const auto& [id, app_id] : expected) {
+        SCOPED_TRACE(id);
+        const auto found = std::ranges::find_if(
+            *packages, [&](const auto& package) { return package.id == id; });
+        ASSERT_NE(found, packages->end());
+        EXPECT_EQ(found->steam_app_id, app_id);
+    }
+
+    const auto generic = std::ranges::find_if(
+        *packages, [](const auto& package) { return package.generic; });
+    ASSERT_NE(generic, packages->end());
+    EXPECT_EQ(generic->steam_app_id, 0);
 }
 
 TEST(GuiModel, RunsPackageInstallInReadOnlySandboxAndReturnsEveryRepository) {

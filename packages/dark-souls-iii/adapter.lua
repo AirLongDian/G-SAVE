@@ -214,7 +214,7 @@ function install(context)
     if process_path == nil then
         problems[#problems + 1] = problem(
             "game_executable_not_found",
-            "未在 Steam 库中找到 DARK SOULS III，可在 GUI 中手动选择 DarkSoulsIII.exe")
+            "未在 Steam 库中找到 DARK SOULS III，请确认游戏已通过 Steam 安装")
     end
 
     local roaming = context.known_folder("roaming_app_data")

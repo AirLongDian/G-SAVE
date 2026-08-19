@@ -201,6 +201,8 @@ Result<PackageManifest> load_package_manifest(
     result.adapter = adapter_path;
     result.commit = std::move(*commit);
     result.generic = document["generic"].value_or(false);
+    const auto app_id = (*game)["steam_app_id"].value_or<std::int64_t>(0);
+    if (app_id > 0) result.steam_app_id = app_id;
     if (const auto* git = document["git"].as_table()) {
         if (const auto* patterns = (*git)["exclude_globs"].as_array()) {
             for (const auto& node : *patterns) {
@@ -301,6 +303,10 @@ Status GuiModel::persist(config::Config next) {
     }
     config_ = std::move(next);
     return {};
+}
+
+Status GuiModel::replace_configuration(config::Config next) {
+    return persist(std::move(next));
 }
 
 Status GuiModel::install(const InstallRequest& request) {

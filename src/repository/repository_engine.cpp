@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <ctime>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -47,6 +48,7 @@ using Config = GitPointer<git_config, git_config_free>;
 using Object = GitPointer<git_object, git_object_free>;
 using Revwalk = GitPointer<git_revwalk, git_revwalk_free>;
 using AnnotatedCommit = GitPointer<git_annotated_commit, git_annotated_commit_free>;
+using BranchIterator = GitPointer<git_branch_iterator, git_branch_iterator_free>;
 #endif
 
 class GitRuntime final {
@@ -503,6 +505,56 @@ int credential_callback(
     const int result = git_remote_push(remote, &refspecs, &options);
     if (result < 0) {
         return std::unexpected(git_push_error("cannot publish timeline reference", result));
+    }
+    return {};
+}
+
+[[nodiscard]] Status validate_branch_name(const std::string_view branch) {
+    if (branch.empty()) {
+        return std::unexpected(make_error(
+            std::errc::invalid_argument, "save timeline name must not be empty"));
+    }
+    const std::string name{branch};
+    int valid = 0;
+    if (git_branch_name_is_valid(&valid, name.c_str()) < 0 || valid == 0) {
+        return std::unexpected(make_error(
+            std::errc::invalid_argument, "save timeline name is not a valid branch name"));
+    }
+    return {};
+}
+
+// Points HEAD at an existing branch and materialises its tree. HEAD is moved
+// only after the worktree write succeeds, and any failure restores the previous
+// HEAD, so the repository is never left on a detached HEAD or a half-applied
+// timeline.
+[[nodiscard]] Status checkout_branch(
+    git_repository* repository,
+    const std::string& reference_name,
+    const git_object* commit_object) {
+    std::string previous;
+    git_reference* raw_head = nullptr;
+    const int head_result = git_repository_head(&raw_head, repository);
+    if (head_result == 0) {
+        Reference head{raw_head};
+        const char* name = git_reference_name(head.get());
+        if (name != nullptr && git_reference_is_branch(head.get())) previous = name;
+    } else if (head_result != GIT_EUNBORNBRANCH && head_result != GIT_ENOTFOUND) {
+        return std::unexpected(git_error("cannot inspect current save timeline"));
+    }
+
+    git_checkout_options checkout = GIT_CHECKOUT_OPTIONS_INIT;
+    checkout.checkout_strategy = GIT_CHECKOUT_SAFE
+        | GIT_CHECKOUT_RECREATE_MISSING
+        | GIT_CHECKOUT_REMOVE_UNTRACKED;
+    if (git_checkout_tree(repository, commit_object, &checkout) < 0) {
+        return std::unexpected(git_error("cannot open the selected save timeline"));
+    }
+    if (git_repository_set_head(repository, reference_name.c_str()) < 0) {
+        if (!previous.empty()) {
+            static_cast<void>(git_repository_set_head(repository, previous.c_str()));
+            static_cast<void>(checkout_head(repository));
+        }
+        return std::unexpected(git_error("cannot switch to the selected save timeline"));
     }
     return {};
 }
@@ -1031,6 +1083,210 @@ Result<TimelineResolution> resolve_divergence(
         .preserved_commit = oid_text(preserved_oid),
         .preserved_branch = preserved_branch,
     };
+}
+
+Result<std::vector<BranchInfo>> list_branches(
+    const std::filesystem::path& repository_path) {
+    GitRuntime runtime;
+    if (!runtime.initialized()) {
+        return std::unexpected(git_error("cannot initialize libgit2"));
+    }
+    auto repository = open_repository(repository_path, false);
+    if (!repository) return std::unexpected(repository.error());
+
+    std::string current;
+    git_reference* raw_head = nullptr;
+    if (git_repository_head(&raw_head, repository->get()) == 0) {
+        Reference head{raw_head};
+        if (git_reference_is_branch(head.get())) {
+            const char* shorthand = git_reference_shorthand(head.get());
+            if (shorthand != nullptr) current = shorthand;
+        }
+    }
+
+    git_branch_iterator* raw_iterator = nullptr;
+    if (git_branch_iterator_new(
+            &raw_iterator, repository->get(), GIT_BRANCH_LOCAL) < 0) {
+        return std::unexpected(git_error("cannot list save timelines"));
+    }
+    BranchIterator iterator{raw_iterator};
+
+    std::vector<BranchInfo> result;
+    for (;;) {
+        git_reference* raw_branch = nullptr;
+        git_branch_t kind{};
+        const int next = git_branch_next(&raw_branch, &kind, iterator.get());
+        if (next == GIT_ITEROVER) break;
+        if (next < 0) return std::unexpected(git_error("cannot read save timeline"));
+        Reference branch{raw_branch};
+        const char* shorthand = git_reference_shorthand(branch.get());
+        if (shorthand == nullptr) continue;
+        BranchInfo info{};
+        info.name = shorthand;
+        info.current = info.name == current;
+        const git_oid* target = git_reference_target(branch.get());
+        if (target != nullptr) {
+            info.tip_commit = oid_text(*target);
+            git_commit* raw_commit = nullptr;
+            if (git_commit_lookup(&raw_commit, repository->get(), target) == 0) {
+                Commit commit{raw_commit};
+                info.tip_committed_at = git_commit_time(commit.get());
+            }
+        }
+        result.push_back(std::move(info));
+    }
+    std::ranges::sort(result, [](const BranchInfo& left, const BranchInfo& right) {
+        if (left.tip_committed_at != right.tip_committed_at) {
+            return left.tip_committed_at > right.tip_committed_at;
+        }
+        return left.name < right.name;
+    });
+    return result;
+}
+
+Result<std::string> suggest_branch_name(
+    const std::filesystem::path& repository_path,
+    const std::string_view commit_id) {
+    if (commit_id.empty()) {
+        return std::unexpected(make_error(
+            std::errc::invalid_argument, "commit ID must not be empty"));
+    }
+    GitRuntime runtime;
+    if (!runtime.initialized()) {
+        return std::unexpected(git_error("cannot initialize libgit2"));
+    }
+    auto repository = open_repository(repository_path, false);
+    if (!repository) return std::unexpected(repository.error());
+
+    const std::string revision{commit_id};
+    git_object* raw_object = nullptr;
+    if (git_revparse_single(
+            &raw_object, repository->get(), revision.c_str()) < 0) {
+        return std::unexpected(git_error("cannot resolve selected save version"));
+    }
+    Object object{raw_object};
+    git_object* raw_commit_object = nullptr;
+    if (git_object_peel(&raw_commit_object, object.get(), GIT_OBJECT_COMMIT) < 0) {
+        return std::unexpected(git_error("selected save version is not a commit"));
+    }
+    Object commit_object{raw_commit_object};
+    const auto* commit = reinterpret_cast<const git_commit*>(commit_object.get());
+    const auto time = static_cast<std::time_t>(git_commit_time(commit));
+    std::tm parts{};
+    char stamp[16]{};
+    if (localtime_s(&parts, &time) == 0) {
+        static_cast<void>(std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M", &parts));
+    }
+    const auto short_id = oid_text(*git_object_id(commit_object.get())).substr(0, 8);
+    std::string base = "save/";
+    if (stamp[0] != '\0') {
+        base.append(stamp);
+        base.push_back('-');
+    }
+    base.append(short_id);
+
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        const std::string candidate = attempt == 0
+            ? base : base + "-" + std::to_string(attempt + 1);
+        git_reference* raw_existing = nullptr;
+        const int lookup = git_branch_lookup(
+            &raw_existing, repository->get(), candidate.c_str(), GIT_BRANCH_LOCAL);
+        if (lookup == GIT_ENOTFOUND) return candidate;
+        if (lookup < 0) {
+            return std::unexpected(git_error("cannot inspect existing save timelines"));
+        }
+        Reference existing{raw_existing};
+    }
+    return std::unexpected(make_error(
+        std::errc::file_exists, "cannot derive an unused save timeline name"));
+}
+
+Status create_branch_from_commit(const BranchFromCommitOptions& options) {
+    if (options.commit_id.empty()) {
+        return std::unexpected(make_error(
+            std::errc::invalid_argument, "commit ID must not be empty"));
+    }
+    if (auto valid = validate_branch_name(options.branch); !valid) return valid;
+    GitRuntime runtime;
+    if (!runtime.initialized()) {
+        return std::unexpected(git_error("cannot initialize libgit2"));
+    }
+    auto repository = open_repository(options.repository);
+    if (!repository) return std::unexpected(repository.error());
+    if (auto clean = ensure_clean_worktree(repository->get()); !clean) {
+        return std::unexpected(clean.error());
+    }
+
+    git_object* raw_object = nullptr;
+    if (git_revparse_single(
+            &raw_object, repository->get(), options.commit_id.c_str()) < 0) {
+        return std::unexpected(git_error("cannot resolve selected save version"));
+    }
+    Object object{raw_object};
+    git_object* raw_commit_object = nullptr;
+    if (git_object_peel(&raw_commit_object, object.get(), GIT_OBJECT_COMMIT) < 0) {
+        return std::unexpected(git_error("selected save version is not a commit"));
+    }
+    Object commit_object{raw_commit_object};
+    const auto* commit = reinterpret_cast<const git_commit*>(commit_object.get());
+
+    git_reference* raw_created = nullptr;
+    if (git_branch_create(
+            &raw_created, repository->get(), options.branch.c_str(), commit, 0) < 0) {
+        return std::unexpected(git_error("cannot create the new save timeline"));
+    }
+    Reference created{raw_created};
+    const char* created_name = git_reference_name(created.get());
+    if (created_name == nullptr) {
+        return std::unexpected(git_error("cannot read the new save timeline"));
+    }
+    const std::string created_reference{created_name};
+
+    // Attach HEAD to the new branch before touching the worktree so a failed
+    // checkout can never leave the repository on a detached HEAD.
+    return checkout_branch(repository->get(), created_reference, commit_object.get());
+}
+
+Status switch_branch(
+    const std::filesystem::path& repository_path,
+    const std::string_view branch) {
+    if (auto valid = validate_branch_name(branch); !valid) return valid;
+    GitRuntime runtime;
+    if (!runtime.initialized()) {
+        return std::unexpected(git_error("cannot initialize libgit2"));
+    }
+    auto repository = open_repository(repository_path);
+    if (!repository) return std::unexpected(repository.error());
+    if (auto clean = ensure_clean_worktree(repository->get()); !clean) {
+        return std::unexpected(clean.error());
+    }
+
+    const std::string name{branch};
+    git_reference* raw_branch = nullptr;
+    const int lookup = git_branch_lookup(
+        &raw_branch, repository->get(), name.c_str(), GIT_BRANCH_LOCAL);
+    if (lookup == GIT_ENOTFOUND) {
+        return std::unexpected(make_error(
+            std::errc::no_such_file_or_directory, "selected save timeline does not exist"));
+    }
+    if (lookup < 0) {
+        return std::unexpected(git_error("cannot open selected save timeline"));
+    }
+    Reference target{raw_branch};
+    const char* reference_name = git_reference_name(target.get());
+    const git_oid* tip = git_reference_target(target.get());
+    if (reference_name == nullptr || tip == nullptr) {
+        return std::unexpected(git_error("cannot inspect selected save timeline"));
+    }
+    const std::string reference{reference_name};
+
+    git_object* raw_commit_object = nullptr;
+    if (git_object_lookup(
+            &raw_commit_object, repository->get(), tip, GIT_OBJECT_COMMIT) < 0) {
+        return std::unexpected(git_error("cannot read selected save timeline"));
+    }
+    Object commit_object{raw_commit_object};
+    return checkout_branch(repository->get(), reference, commit_object.get());
 }
 #endif
 

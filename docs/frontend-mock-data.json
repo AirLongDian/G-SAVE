@@ -1,0 +1,549 @@
+{
+  "cloudSettings": {
+    "allRemoteConfigured": false,
+    "credentialStored": false,
+    "gameCount": 3,
+    "interval": 300,
+    "repositories": [
+      {
+        "configured": false,
+        "enabled": true,
+        "game": "ELDEN RING",
+        "repository": "gsave-elden-ring"
+      },
+      {
+        "configured": false,
+        "enabled": true,
+        "game": "DarkSoulsIII",
+        "repository": "gsave-dark-souls-iii"
+      },
+      {
+        "configured": false,
+        "enabled": false,
+        "game": "DRAGON'S DOGMA 2",
+        "repository": "gsave-dragons-dogma-2"
+      }
+    ],
+    "repositoryCount": 3,
+    "serviceAddress": "",
+    "trigger": 1
+  },
+  "games": [
+    {
+      "enabled": true,
+      "id": "elden-ring",
+      "name": "ELDEN RING",
+      "process": "eldenring.exe",
+      "processPath": "D:\\Games\\SaveDemo\\elden-ring\\eldenring.exe",
+      "saveCount": 1,
+      "savePath": "D:\\Games\\SaveDemo\\elden-ring\\save"
+    },
+    {
+      "enabled": true,
+      "id": "dark-souls-iii",
+      "name": "DarkSoulsIII",
+      "process": "DarkSoulsIII.exe",
+      "processPath": "D:\\Games\\SaveDemo\\dark-souls-iii\\DarkSoulsIII.exe",
+      "saveCount": 1,
+      "savePath": "D:\\Games\\SaveDemo\\dark-souls-iii\\save"
+    },
+    {
+      "enabled": false,
+      "id": "dragons-dogma-2",
+      "name": "DRAGON'S DOGMA 2",
+      "process": "DD2.exe",
+      "processPath": "D:\\Games\\SaveDemo\\dragons-dogma-2\\DD2.exe",
+      "saveCount": 1,
+      "savePath": "D:\\Games\\SaveDemo\\dragons-dogma-2\\save"
+    }
+  ],
+  "library": [
+    {
+      "banner": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg",
+      "enabled": true,
+      "gameIndex": 0,
+      "id": "elden-ring",
+      "kind": "installed",
+      "name": "ELDEN RING",
+      "packageIndex": 2,
+      "poster": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/library_600x900.jpg",
+      "process": "eldenring.exe",
+      "saveCount": 1,
+      "savePath": "D:\\Games\\SaveDemo\\elden-ring\\save",
+      "updateVersion": "",
+      "version": "0.1.0"
+    },
+    {
+      "banner": "",
+      "enabled": true,
+      "gameIndex": 1,
+      "id": "dark-souls-iii",
+      "kind": "installed",
+      "name": "DarkSoulsIII",
+      "packageIndex": -1,
+      "poster": "",
+      "process": "DarkSoulsIII.exe",
+      "saveCount": 1,
+      "savePath": "D:\\Games\\SaveDemo\\dark-souls-iii\\save",
+      "updateVersion": "",
+      "version": ""
+    },
+    {
+      "banner": "https://cdn.cloudflare.steamstatic.com/steam/apps/2054970/header.jpg",
+      "enabled": false,
+      "gameIndex": 2,
+      "id": "dragons-dogma-2",
+      "kind": "installed",
+      "name": "DRAGON'S DOGMA 2",
+      "packageIndex": 0,
+      "poster": "https://cdn.cloudflare.steamstatic.com/steam/apps/2054970/library_600x900.jpg",
+      "process": "DD2.exe",
+      "saveCount": 1,
+      "savePath": "D:\\Games\\SaveDemo\\dragons-dogma-2\\save",
+      "updateVersion": "",
+      "version": "0.1.0"
+    },
+    {
+      "banner": "https://cdn.cloudflare.steamstatic.com/steam/apps/367500/header.jpg",
+      "id": "dragons-dogma-dark-arisen",
+      "kind": "available",
+      "name": "DRAGON'S DOGMA: DARK ARISEN",
+      "packageIndex": 1,
+      "poster": "https://cdn.cloudflare.steamstatic.com/steam/apps/367500/library_600x900.jpg",
+      "process": "DDDA.exe",
+      "source": "local",
+      "summary": "",
+      "version": "0.1.0"
+    }
+  ],
+  "packages": [
+    {
+      "configured": true,
+      "index": 0,
+      "name": "DRAGON'S DOGMA 2",
+      "version": "0.1.0"
+    },
+    {
+      "configured": false,
+      "index": 1,
+      "name": "DRAGON'S DOGMA: DARK ARISEN",
+      "version": "0.1.0"
+    },
+    {
+      "configured": true,
+      "index": 2,
+      "name": "ELDEN RING",
+      "version": "0.1.0"
+    }
+  ],
+  "perGame": [
+    {
+      "branches": [
+        {
+          "current": true,
+          "name": "main",
+          "shortTip": "0414b8b1",
+          "time": "2026-08-18  12:25",
+          "tip": "0414b8b17a5db5812d5714c5e5b60fb037030bbd"
+        }
+      ],
+      "gameDetail": {
+        "banner": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg",
+        "commit": {
+          "commitOnExit": true,
+          "maxIntervalSeconds": 300,
+          "pending": false,
+          "quietSeconds": 5,
+          "strategy": 3
+        },
+        "enabled": true,
+        "generic": false,
+        "id": "elden-ring",
+        "index": 0,
+        "name": "ELDEN RING",
+        "packageIndex": 2,
+        "packageName": "ELDEN RING",
+        "packageVersion": "0.1.0",
+        "parser": "D:\\G-SAVE\\packages\\elden-ring\\adapter.lua",
+        "poster": "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/library_600x900.jpg",
+        "process": "eldenring.exe",
+        "processPath": "D:\\Games\\SaveDemo\\elden-ring\\eldenring.exe",
+        "saves": [
+          {
+            "excludeGlobs": [
+              ".git/**"
+            ],
+            "includeGlobs": [
+              "*.sav"
+            ],
+            "index": 0,
+            "path": "D:\\Games\\SaveDemo\\elden-ring\\save"
+          }
+        ],
+        "sync": {
+          "credentialStored": false,
+          "interval": 300,
+          "remote": "origin",
+          "trigger": 1
+        }
+      },
+      "history": [
+        {
+          "id": "0414b8b17a5db5812d5714c5e5b60fb037030bbd",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"elden-ring\",\"repository\":\"D:/Games/SaveDemo/elden-ring/save\",\"warnings\":{}}",
+          "shortId": "0414b8b1",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE elden-ring: game-exit at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "退出游戏时保存"
+        },
+        {
+          "id": "1643433d65f47ccd25771470a2ce569aa2ab783e",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"elden-ring\",\"repository\":\"D:/Games/SaveDemo/elden-ring/save\",\"warnings\":{}}",
+          "shortId": "1643433d",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE elden-ring: quiet-period at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "游戏保存完成"
+        },
+        {
+          "id": "f58ef3774dd85a6b4baeccd80857a92ec06e0746",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"elden-ring\",\"repository\":\"D:/Games/SaveDemo/elden-ring/save\",\"warnings\":{}}",
+          "shortId": "f58ef377",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE elden-ring: quiet-period at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "游戏保存完成"
+        },
+        {
+          "id": "a2aa0e268b259108e3cc209e890bce317d5d6907",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"elden-ring\",\"repository\":\"D:/Games/SaveDemo/elden-ring/save\",\"warnings\":{}}",
+          "shortId": "a2aa0e26",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE elden-ring: initial-baseline at 2026-08-18T04:25:38Z",
+          "time": "2026-08-18  12:25:38",
+          "title": "开始保护存档"
+        }
+      ],
+      "historyDiverged": false,
+      "historyStatus": "尚未设置云端备份，本地历史不受影响。",
+      "repositoriesForGame": [
+        {
+          "index": 0,
+          "name": "默认存档",
+          "path": "D:\\Games\\SaveDemo\\elden-ring\\save"
+        }
+      ],
+      "repositoryState": {
+        "ahead": 0,
+        "behind": 0,
+        "branch": "main",
+        "dirty": false,
+        "lastCommit": "0414b8b17a5db5812d5714c5e5b60fb037030bbd",
+        "lastCommitAt": "2026-08-18  12:25:39",
+        "lastReason": "退出游戏时保存",
+        "remoteUrl": ""
+      }
+    },
+    {
+      "branches": [
+        {
+          "current": true,
+          "name": "main",
+          "shortTip": "464099e9",
+          "time": "2026-08-18  12:25",
+          "tip": "464099e9b4bb6744bedbb5cac65dc74ad17cf4a1"
+        }
+      ],
+      "gameDetail": {
+        "banner": "",
+        "commit": {
+          "commitOnExit": true,
+          "maxIntervalSeconds": 300,
+          "pending": false,
+          "quietSeconds": 5,
+          "strategy": 3
+        },
+        "enabled": true,
+        "generic": true,
+        "id": "dark-souls-iii",
+        "index": 1,
+        "name": "DarkSoulsIII",
+        "packageIndex": -1,
+        "packageName": "通用支持",
+        "packageVersion": "",
+        "parser": "D:\\G-SAVE\\packages\\dark-souls-iii\\adapter.lua",
+        "poster": "",
+        "process": "DarkSoulsIII.exe",
+        "processPath": "D:\\Games\\SaveDemo\\dark-souls-iii\\DarkSoulsIII.exe",
+        "saves": [
+          {
+            "excludeGlobs": [
+              ".git/**"
+            ],
+            "includeGlobs": [
+              "*.sav"
+            ],
+            "index": 0,
+            "path": "D:\\Games\\SaveDemo\\dark-souls-iii\\save"
+          }
+        ],
+        "sync": {
+          "credentialStored": false,
+          "interval": 300,
+          "remote": "origin",
+          "trigger": 1
+        }
+      },
+      "history": [
+        {
+          "id": "464099e9b4bb6744bedbb5cac65dc74ad17cf4a1",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dark-souls-iii\",\"repository\":\"D:/Games/SaveDemo/dark-souls-iii/save\",\"warnings\":{}}",
+          "shortId": "464099e9",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE dark-souls-iii: game-exit at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "退出游戏时保存"
+        },
+        {
+          "id": "dfed1fafc3956b080f9c81939f9dbaf0900f5bbb",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dark-souls-iii\",\"repository\":\"D:/Games/SaveDemo/dark-souls-iii/save\",\"warnings\":{}}",
+          "shortId": "dfed1faf",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE dark-souls-iii: quiet-period at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "游戏保存完成"
+        },
+        {
+          "id": "2ef00e3be88cfa5c0741092c78b1f0893f736c74",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dark-souls-iii\",\"repository\":\"D:/Games/SaveDemo/dark-souls-iii/save\",\"warnings\":{}}",
+          "shortId": "2ef00e3b",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE dark-souls-iii: quiet-period at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "游戏保存完成"
+        },
+        {
+          "id": "bbc6327844ba335be8ae6038d79416cc91906065",
+          "metadata": "{\"accounts\":{},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dark-souls-iii\",\"repository\":\"D:/Games/SaveDemo/dark-souls-iii/save\",\"warnings\":{}}",
+          "shortId": "bbc63278",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [],
+          "summary": "G-SAVE dark-souls-iii: initial-baseline at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "开始保护存档"
+        }
+      ],
+      "historyDiverged": false,
+      "historyStatus": "尚未设置云端备份，本地历史不受影响。",
+      "repositoriesForGame": [
+        {
+          "index": 0,
+          "name": "默认存档",
+          "path": "D:\\Games\\SaveDemo\\dark-souls-iii\\save"
+        }
+      ],
+      "repositoryState": {
+        "ahead": 0,
+        "behind": 0,
+        "branch": "main",
+        "dirty": false,
+        "lastCommit": "464099e9b4bb6744bedbb5cac65dc74ad17cf4a1",
+        "lastCommitAt": "2026-08-18  12:25:39",
+        "lastReason": "退出游戏时保存",
+        "remoteUrl": ""
+      }
+    },
+    {
+      "branches": [
+        {
+          "current": true,
+          "name": "main",
+          "shortTip": "1ef18c0a",
+          "time": "2026-08-18  12:25",
+          "tip": "1ef18c0a802e5a4148bef157bbdc05d04214c254"
+        }
+      ],
+      "gameDetail": {
+        "banner": "https://cdn.cloudflare.steamstatic.com/steam/apps/2054970/header.jpg",
+        "commit": {
+          "commitOnExit": true,
+          "maxIntervalSeconds": 300,
+          "pending": false,
+          "quietSeconds": 5,
+          "strategy": 3
+        },
+        "enabled": false,
+        "generic": false,
+        "id": "dragons-dogma-2",
+        "index": 2,
+        "name": "DRAGON'S DOGMA 2",
+        "packageIndex": 0,
+        "packageName": "DRAGON'S DOGMA 2",
+        "packageVersion": "0.1.0",
+        "parser": "D:\\G-SAVE\\packages\\dragons-dogma-2\\adapter.lua",
+        "poster": "https://cdn.cloudflare.steamstatic.com/steam/apps/2054970/library_600x900.jpg",
+        "process": "DD2.exe",
+        "processPath": "D:\\Games\\SaveDemo\\dragons-dogma-2\\DD2.exe",
+        "saves": [
+          {
+            "excludeGlobs": [
+              ".git/**"
+            ],
+            "includeGlobs": [
+              "*.sav"
+            ],
+            "index": 0,
+            "path": "D:\\Games\\SaveDemo\\dragons-dogma-2\\save"
+          }
+        ],
+        "sync": {
+          "credentialStored": false,
+          "interval": 300,
+          "remote": "origin",
+          "trigger": 1
+        }
+      },
+      "history": [
+        {
+          "id": "1ef18c0a802e5a4148bef157bbdc05d04214c254",
+          "metadata": "{\"accounts\":{\"1\":{\"account_id\":\"Steam\",\"slots\":{\"1\":{\"character_name\":\"\",\"index\":1,\"label\":\"最近存档\",\"occupied\":false},\"2\":{\"character_name\":\"\",\"index\":2,\"label\":\"旅店存档\",\"occupied\":false}}}},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dragons-dogma-2\"}",
+          "shortId": "1ef18c0a",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [
+            {
+              "account": "Steam",
+              "index": 1,
+              "label": "最近存档",
+              "name": "",
+              "occupied": false
+            },
+            {
+              "account": "Steam",
+              "index": 2,
+              "label": "旅店存档",
+              "name": "",
+              "occupied": false
+            }
+          ],
+          "summary": "G-SAVE dragons-dogma-2: game-exit at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "退出游戏时保存"
+        },
+        {
+          "id": "eb023806db4b546b4558a1ae1dd1d7cd9a2ecc9f",
+          "metadata": "{\"accounts\":{\"1\":{\"account_id\":\"Steam\",\"slots\":{\"1\":{\"character_name\":\"\",\"index\":1,\"label\":\"最近存档\",\"occupied\":false},\"2\":{\"character_name\":\"\",\"index\":2,\"label\":\"旅店存档\",\"occupied\":false}}}},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dragons-dogma-2\"}",
+          "shortId": "eb023806",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [
+            {
+              "account": "Steam",
+              "index": 1,
+              "label": "最近存档",
+              "name": "",
+              "occupied": false
+            },
+            {
+              "account": "Steam",
+              "index": 2,
+              "label": "旅店存档",
+              "name": "",
+              "occupied": false
+            }
+          ],
+          "summary": "G-SAVE dragons-dogma-2: quiet-period at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "游戏保存完成"
+        },
+        {
+          "id": "6f51fecbeac36a35ba869606c76a45ef0fc1167c",
+          "metadata": "{\"accounts\":{\"1\":{\"account_id\":\"Steam\",\"slots\":{\"1\":{\"character_name\":\"\",\"index\":1,\"label\":\"最近存档\",\"occupied\":false},\"2\":{\"character_name\":\"\",\"index\":2,\"label\":\"旅店存档\",\"occupied\":false}}}},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dragons-dogma-2\"}",
+          "shortId": "6f51fecb",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [
+            {
+              "account": "Steam",
+              "index": 1,
+              "label": "最近存档",
+              "name": "",
+              "occupied": false
+            },
+            {
+              "account": "Steam",
+              "index": 2,
+              "label": "旅店存档",
+              "name": "",
+              "occupied": false
+            }
+          ],
+          "summary": "G-SAVE dragons-dogma-2: quiet-period at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "游戏保存完成"
+        },
+        {
+          "id": "ecc5b257891fde6d0f35983e0b83281eb3976b66",
+          "metadata": "{\"accounts\":{\"1\":{\"account_id\":\"Steam\",\"slots\":{\"1\":{\"character_name\":\"\",\"index\":1,\"label\":\"最近存档\",\"occupied\":false},\"2\":{\"character_name\":\"\",\"index\":2,\"label\":\"旅店存档\",\"occupied\":false}}}},\"changed_files\":{\"1\":\"slot.sav\"},\"game_id\":\"dragons-dogma-2\"}",
+          "shortId": "ecc5b257",
+          "slotSummary": "未解析到存档槽位",
+          "slots": [
+            {
+              "account": "Steam",
+              "index": 1,
+              "label": "最近存档",
+              "name": "",
+              "occupied": false
+            },
+            {
+              "account": "Steam",
+              "index": 2,
+              "label": "旅店存档",
+              "name": "",
+              "occupied": false
+            }
+          ],
+          "summary": "G-SAVE dragons-dogma-2: initial-baseline at 2026-08-18T04:25:39Z",
+          "time": "2026-08-18  12:25:39",
+          "title": "开始保护存档"
+        }
+      ],
+      "historyDiverged": false,
+      "historyStatus": "尚未设置云端备份，本地历史不受影响。",
+      "repositoriesForGame": [
+        {
+          "index": 0,
+          "name": "默认存档",
+          "path": "D:\\Games\\SaveDemo\\dragons-dogma-2\\save"
+        }
+      ],
+      "repositoryState": {
+        "ahead": 0,
+        "behind": 0,
+        "branch": "main",
+        "dirty": false,
+        "lastCommit": "1ef18c0a802e5a4148bef157bbdc05d04214c254",
+        "lastCommitAt": "2026-08-18  12:25:39",
+        "lastReason": "退出游戏时保存",
+        "remoteUrl": ""
+      }
+    }
+  ],
+  "service": {
+    "autostartEnabled": true,
+    "configPath": "D:\\Games\\SaveDemo\\config.toml",
+    "coreBusy": false,
+    "corePath": "D:\\Games\\SaveDemo\\gsave-core.exe",
+    "coreRunning": false,
+    "hasPendingChanges": false,
+    "indexLoading": false,
+    "indexStatus": "",
+    "indexUrl": "https://raw.githubusercontent.com/AirLongDian/G-SAVE/main/packages/index.json",
+    "packageRoot": "D:\\Games\\SaveDemo\\packages"
+  }
+}

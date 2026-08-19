@@ -215,10 +215,12 @@ if(WIN32 AND GSAVE_EXISTING_PLATFORM_SOURCES)
             src/gui/gui_controller.cpp
             src/gui/cloud_service.cpp
             src/gui/package_archive.cpp
+            src/gui/package_index.cpp
             ${GSAVE_WINDOWS_ICON_RESOURCE}
             include/gsave/gui/gui_controller.hpp
             include/gsave/gui/cloud_service.hpp
             include/gsave/gui/package_archive.hpp
+            include/gsave/gui/package_index.hpp
         )
         set_source_files_properties(
             qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE
@@ -229,14 +231,17 @@ if(WIN32 AND GSAVE_EXISTING_PLATFORM_SOURCES)
             QML_FILES
                 qml/Main.qml
                 qml/Theme.qml
+                qml/components/AddGameCard.qml
                 qml/components/AppButton.qml
                 qml/components/AppComboBox.qml
                 qml/components/AppTextField.qml
+                qml/components/GameCard.qml
                 qml/components/Panel.qml
-                qml/pages/GamesPage.qml
-                qml/pages/TimelinePage.qml
-                qml/pages/CloudPage.qml
-                qml/pages/ServicePage.qml
+                qml/pages/GameDetailPage.qml
+                qml/pages/GameSavesTab.qml
+                qml/pages/GameSupportTab.qml
+                qml/pages/LibraryPage.qml
+                qml/pages/SettingsPage.qml
         )
         qt_add_resources(gsave-gui gsave_app_resources
             PREFIX "/"
@@ -398,12 +403,15 @@ if(BUILD_TESTING)
                 tests/gui_controller_tests.cpp
                 tests/cloud_service_tests.cpp
                 tests/package_archive_tests.cpp
+                tests/package_index_tests.cpp
                 src/gui/gui_controller.cpp
                 src/gui/cloud_service.cpp
                 src/gui/package_archive.cpp
+                src/gui/package_index.cpp
                 include/gsave/gui/gui_controller.hpp
                 include/gsave/gui/cloud_service.hpp
                 include/gsave/gui/package_archive.hpp
+                include/gsave/gui/package_index.hpp
             )
             target_link_libraries(
                 gsave_gui_controller_tests
@@ -415,6 +423,10 @@ if(BUILD_TESTING)
                     Qt6::Widgets
                     Qt6::CorePrivate
                     GTest::gtest
+            )
+            target_compile_definitions(
+                gsave_gui_controller_tests
+                PRIVATE GSAVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
             )
             if(MSVC)
                 target_compile_options(
@@ -436,6 +448,43 @@ if(BUILD_TESTING)
                     gsave_repository
                     gsave_repository_management
                     gsave_config_writer
+            )
+
+            add_executable(gsave_gui_library_fixture tests/gui_library_fixture.cpp)
+            target_compile_definitions(
+                gsave_gui_library_fixture
+                PRIVATE GSAVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            )
+            target_link_libraries(
+                gsave_gui_library_fixture
+                PRIVATE
+                    gsave_repository
+                    gsave_repository_management
+                    gsave_config_writer
+            )
+
+            # Dumps the real backend JSON contract so frontend mock data matches
+            # production instead of being transcribed by hand.
+            add_executable(gsave_gui_contract_dump
+                tests/gui_contract_dump.cpp
+                src/gui/gui_controller.cpp
+                src/gui/cloud_service.cpp
+                src/gui/package_archive.cpp
+                src/gui/package_index.cpp
+                include/gsave/gui/gui_controller.hpp
+            )
+            set_target_properties(
+                gsave_gui_contract_dump PROPERTIES AUTOMOC ON
+            )
+            target_link_libraries(
+                gsave_gui_contract_dump
+                PRIVATE
+                    gsave_gui_support
+                    Qt6::Network
+                    Qt6::Quick
+                    Qt6::QuickControls2
+                    Qt6::Widgets
+                    Qt6::CorePrivate
             )
         endif()
     endif()

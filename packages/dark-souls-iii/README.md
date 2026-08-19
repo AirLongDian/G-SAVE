@@ -2,7 +2,7 @@
 
 用于 [G-SAVE](https://github.com/AirLongDian/G-SAVE) 的 DARK SOULS III 支持包。
 
-手动配置时选择：
+自动检测的位置：
 
 - EXE：`<Steam库>\steamapps\common\DARK SOULS III\Game\DarkSoulsIII.exe`
 - 存档文件夹：`%APPDATA%\DarkSoulsIII`

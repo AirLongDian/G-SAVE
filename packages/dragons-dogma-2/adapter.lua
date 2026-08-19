@@ -28,7 +28,7 @@ function install(context)
     if process_path == nil then
         problems[#problems + 1] = {
             code = "game_executable_not_found",
-            message = "未在 Steam 库中找到 DRAGON'S DOGMA 2，可手动选择 DD2.exe",
+            message = "未在 Steam 库中找到 DRAGON'S DOGMA 2，请确认游戏已通过 Steam 安装",
         }
     end
     if #repositories == 0 then

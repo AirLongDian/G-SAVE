@@ -7,17 +7,22 @@ import "components"
 
 ApplicationWindow {
     id: window
-    width: 1240
-    height: 800
-    minimumWidth: 1020
-    minimumHeight: 680
+    width: 1280
+    height: 840
+    minimumWidth: 1060
+    minimumHeight: 700
     visible: true
     title: "G-SAVE · 游戏存档时间线"
     color: Theme.canvas
 
+    // 0 library, 1 game detail, 2 settings
     property int currentPage: 0
+    property int selectedGame: -1
     property string toastText: ""
     property bool toastError: false
+    property bool closeApproved: false
+
+    Component.onCompleted: Backend.refreshIndex()
 
     Connections {
         target: Backend
@@ -28,180 +33,283 @@ ApplicationWindow {
         }
     }
 
-    RowLayout {
+    // Core reads its configuration once at startup, so staged edits would be
+    // silently lost on exit. Ask instead of dropping them.
+    onClosing: function (close) {
+        if (window.closeApproved || !Backend.hasPendingChanges) return
+        close.accepted = false
+        saveOnExitDialog.open()
+    }
+
+    function openGame(index) {
+        window.selectedGame = index
+        window.currentPage = 1
+    }
+
+    ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
+        // Title bar
         Rectangle {
-            Layout.preferredWidth: 230
-            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.preferredHeight: 60
             color: Theme.sidebar
-            border.color: Theme.border
-            border.width: 0
 
-            ColumnLayout {
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Theme.border
+            }
+
+            RowLayout {
                 anchors.fill: parent
-                anchors.margins: 20
-                spacing: 8
+                anchors.leftMargin: 20
+                anchors.rightMargin: 20
+                spacing: 14
 
-                Item { Layout.preferredHeight: 12 }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 11
-                    Rectangle {
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
-                        radius: 10
-                        color: Theme.amber
-                        Text {
-                            anchors.centerIn: parent
-                            text: "G"
-                            color: Theme.canvas
-                            font.family: Theme.displayFont
-                            font.pixelSize: 19
-                            font.weight: Font.Black
-                        }
+                Rectangle {
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    radius: 9
+                    color: Theme.amber
+                    Text {
+                        anchors.centerIn: parent
+                        text: "G"
+                        color: Theme.canvas
+                        font.family: Theme.displayFont
+                        font.pixelSize: 18
+                        font.weight: Font.Black
                     }
-                    ColumnLayout {
-                        spacing: -2
-                        Text {
-                            text: "G-SAVE"
-                            color: Theme.text
-                            font.family: Theme.displayFont
-                            font.pixelSize: 19
-                            font.weight: Font.Bold
-                            font.letterSpacing: 1.1
-                        }
-                        Text {
-                            text: "SAVE TIMELINE"
-                            color: Theme.faint
-                            font.family: Theme.monoFont
-                            font.pixelSize: 9
-                            font.letterSpacing: 1.5
-                        }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: window.currentPage = 0
                     }
                 }
 
-                Item { Layout.preferredHeight: 42 }
+                Text {
+                    text: "G-SAVE"
+                    color: Theme.text
+                    font.family: Theme.displayFont
+                    font.pixelSize: 18
+                    font.weight: Font.Bold
+                    font.letterSpacing: 1.1
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 24
+                    color: Theme.border
+                }
 
                 Repeater {
                     model: [
-                        { icon: "◇", title: "游戏支持", hint: "添加与管理游戏" },
-                        { icon: "◉", title: "存档时间线", hint: "浏览、恢复与同步" },
-                        { icon: "↑", title: "云端备份", hint: "上传规则与登录" },
-                        { icon: "⚙", title: "运行设置", hint: "服务与自动启动" }
+                        { title: "游戏库", page: 0 },
+                        { title: "设置", page: 2 }
                     ]
                     delegate: Rectangle {
                         required property var modelData
-                        required property int index
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 58
-                        radius: 9
-                        color: window.currentPage === index ? Theme.panelRaised
+                        Layout.preferredWidth: navLabel.implicitWidth + 26
+                        Layout.preferredHeight: 34
+                        radius: 8
+                        color: window.currentPage === modelData.page
+                            || (modelData.page === 0 && window.currentPage === 1)
+                            ? Theme.panelRaised
                             : navMouse.containsMouse ? Theme.panel : "transparent"
-                        border.width: window.currentPage === index ? 1 : 0
-                        border.color: Theme.border
-
-                        Rectangle {
-                            visible: window.currentPage === index
-                            width: 3
-                            height: 30
-                            radius: 2
-                            color: Theme.amber
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        Row {
-                            anchors.fill: parent
-                            anchors.leftMargin: 14
-                            spacing: 12
-                            Text {
-                                width: 24
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: modelData.icon
-                                color: window.currentPage === index ? Theme.amber : Theme.muted
-                                font.pixelSize: 20
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 2
-                                Text {
-                                    text: modelData.title
-                                    color: Theme.text
-                                    font.family: Theme.uiFont
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                }
-                                Text {
-                                    text: modelData.hint
-                                    color: Theme.faint
-                                    font.family: Theme.uiFont
-                                    font.pixelSize: 11
-                                }
-                            }
+                        Text {
+                            id: navLabel
+                            anchors.centerIn: parent
+                            text: modelData.title
+                            color: window.currentPage === modelData.page
+                                || (modelData.page === 0 && window.currentPage === 1)
+                                ? Theme.text : Theme.muted
+                            font.family: Theme.uiFont
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
                         }
                         MouseArea {
                             id: navMouse
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: window.currentPage = index
+                            onClicked: window.currentPage = modelData.page
                         }
                     }
                 }
 
-                Item { Layout.fillHeight: true }
+                Item { Layout.fillWidth: true }
 
+                AppButton {
+                    compact: true
+                    visible: Backend.hasPendingChanges
+                    kind: "primary"
+                    text: "保存并重启服务"
+                    onClicked: Backend.savePendingChanges()
+                }
+
+                // Core state indicator; clicking toggles the service.
                 Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 62
-                    radius: 10
-                    color: Theme.panel
-                    border.color: Theme.border
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 10
+                    Layout.preferredHeight: 36
+                    Layout.preferredWidth: coreRow.implicitWidth + 26
+                    radius: 18
+                    color: coreMouse.containsMouse && !Backend.coreBusy
+                        ? Theme.panelHover : Theme.panel
+                    border.width: 1
+                    border.color: Backend.coreBusy ? Theme.border
+                        : Backend.coreRunning ? Theme.cyan : Theme.border
+                    opacity: Backend.coreBusy ? 0.7 : 1.0
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on border.color { ColorAnimation { duration: 140 } }
+
+                    RowLayout {
+                        id: coreRow
+                        anchors.centerIn: parent
+                        spacing: 9
+
                         Rectangle {
-                            width: 10; height: 10; radius: 5
-                            color: Backend.coreRunning ? Theme.cyan : Theme.faint
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.preferredWidth: 9
+                            Layout.preferredHeight: 9
+                            radius: 5
+                            color: Backend.coreBusy ? Theme.amber
+                                : Backend.coreRunning ? Theme.cyan : Theme.faint
+
+                            SequentialAnimation on opacity {
+                                running: Backend.coreBusy
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.25; duration: 480 }
+                                NumberAnimation { to: 1.0; duration: 480 }
+                            }
                         }
-                        Column {
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 2
-                            Text {
-                                text: Backend.coreRunning ? "存档保护运行中" : "存档保护已停止"
-                                color: Theme.text
-                                font.family: Theme.uiFont
-                                font.pixelSize: 13
-                                font.weight: Font.DemiBold
-                            }
-                            Text {
-                                text: Backend.coreRunning ? "等待游戏保存事件" : "可在运行设置中启动"
-                                color: Theme.faint
-                                font.family: Theme.uiFont
-                                font.pixelSize: 10
-                            }
+
+                        Text {
+                            text: Backend.coreBusy
+                                ? "处理中…"
+                                : Backend.coreRunning ? "保护运行中" : "保护已停止"
+                            color: Backend.coreRunning && !Backend.coreBusy
+                                ? Theme.text : Theme.muted
+                            font.family: Theme.uiFont
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
                         }
                     }
+
+                    MouseArea {
+                        id: coreMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: !Backend.coreBusy
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Backend.toggleCore()
+                    }
+
+                    ToolTip.visible: coreMouse.containsMouse && !Backend.coreBusy
+                    ToolTip.text: Backend.coreRunning
+                        ? "点击停止存档保护" : "点击启动存档保护"
                 }
             }
         }
 
-        Item {
+        // Breadcrumb for the detail page
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40
+            visible: window.currentPage === 1
+            color: Theme.canvas
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                spacing: 8
+
+                Rectangle {
+                    Layout.preferredWidth: backLabel.implicitWidth + 26
+                    Layout.preferredHeight: 28
+                    radius: 8
+                    color: backMouse.containsMouse ? Theme.panel : "transparent"
+                    Text {
+                        id: backLabel
+                        anchors.centerIn: parent
+                        text: "‹  返回游戏库"
+                        color: backMouse.containsMouse ? Theme.text : Theme.muted
+                        font.family: Theme.uiFont
+                        font.pixelSize: 12
+                    }
+                    MouseArea {
+                        id: backMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: window.currentPage = 0
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+        }
+
+        StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            currentIndex: window.currentPage
 
-            StackLayout {
-                anchors.fill: parent
-                currentIndex: window.currentPage
-                GamesPage { }
-                TimelinePage { }
-                CloudPage { }
-                ServicePage { }
+            LibraryPage {
+                onOpenGame: function (gameIndex) { window.openGame(gameIndex) }
             }
+
+            GameDetailPage {
+                gameIndex: window.selectedGame
+                onBack: window.currentPage = 0
+            }
+
+            SettingsPage { }
+        }
+    }
+
+    Dialog {
+        id: saveOnExitDialog
+        anchors.centerIn: parent
+        width: 440
+        modal: true
+        title: "保存设置并重启服务？"
+        closePolicy: Popup.NoAutoClose
+
+        footer: DialogButtonBox {
+            AppButton {
+                kind: "primary"
+                text: "保存并重启"
+                onClicked: {
+                    saveOnExitDialog.close()
+                    if (Backend.savePendingChanges()) {
+                        window.closeApproved = true
+                        window.close()
+                    }
+                }
+            }
+            AppButton {
+                text: "放弃改动并退出"
+                onClicked: {
+                    saveOnExitDialog.close()
+                    Backend.discardPendingChanges()
+                    window.closeApproved = true
+                    window.close()
+                }
+            }
+            AppButton {
+                text: "取消"
+                onClicked: saveOnExitDialog.close()
+            }
+        }
+
+        contentItem: Text {
+            text: "有未保存的设置。存档保护在启动时读取配置，所以保存后需要重启服务才会生效。"
+            color: Theme.text
+            font.family: Theme.uiFont
+            font.pixelSize: 13
+            wrapMode: Text.WordWrap
+            lineHeight: 1.4
         }
     }
 
@@ -209,7 +317,7 @@ ApplicationWindow {
         id: toast
         x: window.width - width - 28
         y: window.height - height - 28
-        width: Math.min(460, Math.max(300, toastLabel.implicitWidth + 54))
+        width: Math.min(500, Math.max(300, toastLabel.implicitWidth + 54))
         height: Math.max(58, toastLabel.implicitHeight + 28)
         padding: 0
         modal: false
@@ -245,6 +353,24 @@ ApplicationWindow {
                 font.pixelSize: 13
             }
         }
-        Timer { id: toastTimer; interval: window.toastError ? 7000 : 3600; onTriggered: toast.close() }
+        Timer { id: toastTimer; interval: window.toastError ? 8000 : 3800; onTriggered: toast.close() }
+    }
+
+    // Dropping a package archive anywhere in the window imports it, which makes
+    // sharing community packages easy without hunting for a menu.
+    DropArea {
+        anchors.fill: parent
+        onDropped: function (drop) {
+            if (!drop.hasUrls) return
+            for (let index = 0; index < drop.urls.length; ++index) {
+                const path = String(drop.urls[index])
+                if (path.toLowerCase().endsWith(".zip")) {
+                    Backend.importPackageFile(
+                        Qt.resolvedUrl(drop.urls[index]).toString()
+                            .replace(/^file:\/{3}/, ""))
+                    return
+                }
+            }
+        }
     }
 }

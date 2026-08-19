@@ -2,7 +2,7 @@
 
 用于 [G-SAVE](https://github.com/AirLongDian/G-SAVE) 的 DRAGON'S DOGMA 2 支持包。
 
-手动配置时选择：
+自动检测的位置：
 
 - EXE：`<Steam库>\steamapps\common\Dragons Dogma 2\DD2.exe`
 - 存档文件夹：`<Steam目录>\userdata\<Steam账号数字ID>\2054970\remote\win64_save`

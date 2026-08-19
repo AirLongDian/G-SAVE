@@ -11,7 +11,9 @@
 #include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <ranges>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace gsave::repository {
@@ -431,6 +433,120 @@ TEST(RepositoryEngine, KeepsRemoteTimelineAndPreservesLocalTimelineAsBranch) {
     ASSERT_TRUE(clean) << clean.error().message();
     EXPECT_EQ(clean->ahead, 0U);
     EXPECT_EQ(clean->behind, 0U);
+}
+
+TEST(RepositoryEngine, OpensAnOlderSaveAsANamedBranchAndNeverDetachesHead) {
+    RepositoryLayout layout;
+    ASSERT_EQ(*initialize_repository({layout.repository, "test-game", layout.parser}),
+              CommitOutcome::created);
+    const auto baseline = reference_oid(layout.repository, "HEAD");
+    const auto original_branch = head_reference_name(layout.repository);
+
+    RepositoryLayout::write(layout.repository / L"slot.sav", "later-progress");
+    ASSERT_TRUE(commit_repository({
+        layout.repository, "test-game", layout.parser, "quiet"}));
+    const auto latest = reference_oid(layout.repository, "HEAD");
+    ASSERT_NE(baseline, latest);
+
+    auto suggested = suggest_branch_name(layout.repository, baseline);
+    ASSERT_TRUE(suggested) << suggested.error().message();
+    EXPECT_TRUE(suggested->starts_with("save/"));
+    EXPECT_NE(suggested->find(baseline.substr(0, 8)), std::string::npos);
+
+    auto created = create_branch_from_commit({
+        .repository = layout.repository,
+        .commit_id = baseline,
+        .branch = *suggested,
+    });
+    ASSERT_TRUE(created) << created.error().message();
+
+    // The worktree holds the older save, HEAD names the new branch and the
+    // repository is not detached, so commit, push and integrate all keep working.
+    EXPECT_EQ(slot_contents(layout.repository), "round-0");
+    EXPECT_EQ(head_reference_name(layout.repository), "refs/heads/" + *suggested);
+    EXPECT_EQ(reference_oid(layout.repository, "HEAD"), baseline);
+    EXPECT_EQ(reference_oid(layout.repository, "refs/heads/" + *suggested), baseline);
+    EXPECT_EQ(reference_oid(layout.repository, original_branch), latest);
+
+    // Playing on the new timeline must produce commits, which is exactly what a
+    // detached HEAD would have made unpushable.
+    RepositoryLayout::write(layout.repository / L"slot.sav", "branch-progress");
+    auto committed = commit_repository({
+        layout.repository, "test-game", layout.parser, "quiet"});
+    ASSERT_TRUE(committed) << committed.error().message();
+    EXPECT_EQ(*committed, CommitOutcome::created);
+    EXPECT_EQ(head_reference_name(layout.repository), "refs/heads/" + *suggested);
+
+    auto branches = list_branches(layout.repository);
+    ASSERT_TRUE(branches) << branches.error().message();
+    ASSERT_EQ(branches->size(), 2U);
+    const auto current = std::ranges::find_if(
+        *branches, [](const BranchInfo& branch) { return branch.current; });
+    ASSERT_NE(current, branches->end());
+    EXPECT_EQ(current->name, *suggested);
+}
+
+TEST(RepositoryEngine, SwitchesBetweenSaveTimelinesAndRestoresEachWorktree) {
+    RepositoryLayout layout;
+    ASSERT_EQ(*initialize_repository({layout.repository, "test-game", layout.parser}),
+              CommitOutcome::created);
+    const auto baseline = reference_oid(layout.repository, "HEAD");
+    const auto main_branch = head_reference_name(layout.repository);
+    const auto main_name = main_branch.substr(std::string_view{"refs/heads/"}.size());
+
+    RepositoryLayout::write(layout.repository / L"slot.sav", "main-progress");
+    ASSERT_TRUE(commit_repository({
+        layout.repository, "test-game", layout.parser, "quiet"}));
+
+    auto suggested = suggest_branch_name(layout.repository, baseline);
+    ASSERT_TRUE(suggested) << suggested.error().message();
+    ASSERT_TRUE(create_branch_from_commit({
+        layout.repository, baseline, *suggested}));
+    RepositoryLayout::write(layout.repository / L"slot.sav", "side-progress");
+    ASSERT_TRUE(commit_repository({
+        layout.repository, "test-game", layout.parser, "quiet"}));
+    EXPECT_EQ(slot_contents(layout.repository), "side-progress");
+
+    auto back = switch_branch(layout.repository, main_name);
+    ASSERT_TRUE(back) << back.error().message();
+    EXPECT_EQ(head_reference_name(layout.repository), main_branch);
+    EXPECT_EQ(slot_contents(layout.repository), "main-progress");
+
+    auto forward = switch_branch(layout.repository, *suggested);
+    ASSERT_TRUE(forward) << forward.error().message();
+    EXPECT_EQ(head_reference_name(layout.repository), "refs/heads/" + *suggested);
+    EXPECT_EQ(slot_contents(layout.repository), "side-progress");
+}
+
+TEST(RepositoryEngine, RefusesTimelineOperationsThatWouldLoseUncommittedSaves) {
+    RepositoryLayout layout;
+    ASSERT_EQ(*initialize_repository({layout.repository, "test-game", layout.parser}),
+              CommitOutcome::created);
+    const auto baseline = reference_oid(layout.repository, "HEAD");
+    const auto branch = head_reference_name(layout.repository);
+    RepositoryLayout::write(layout.repository / L"slot.sav", "unsaved-progress");
+
+    auto created = create_branch_from_commit({
+        layout.repository, baseline, "save/manual"});
+    EXPECT_FALSE(created);
+    auto switched = switch_branch(
+        layout.repository, branch.substr(std::string_view{"refs/heads/"}.size()));
+    EXPECT_FALSE(switched);
+    EXPECT_EQ(slot_contents(layout.repository), "unsaved-progress");
+    EXPECT_EQ(head_reference_name(layout.repository), branch);
+}
+
+TEST(RepositoryEngine, RejectsInvalidTimelineNamesAndMissingTimelines) {
+    RepositoryLayout layout;
+    ASSERT_EQ(*initialize_repository({layout.repository, "test-game", layout.parser}),
+              CommitOutcome::created);
+    const auto baseline = reference_oid(layout.repository, "HEAD");
+
+    EXPECT_FALSE(create_branch_from_commit({layout.repository, baseline, ""}));
+    EXPECT_FALSE(create_branch_from_commit({layout.repository, baseline, "bad name"}));
+    EXPECT_FALSE(create_branch_from_commit({layout.repository, baseline, "bad..name"}));
+    EXPECT_FALSE(create_branch_from_commit({layout.repository, "", "save/ok"}));
+    EXPECT_FALSE(switch_branch(layout.repository, "save/never-created"));
 }
 
 }  // namespace
